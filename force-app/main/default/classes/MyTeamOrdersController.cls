@@ -1,11 +1,16 @@
-public without sharing class MyTeamOrdersController {
-    
-    // TODO - Corriger l'erreur ici, nous retournons le montant TOTAL de tous les "Orders" 
-    // mais nous souhaitons retourner le montant TOTAL des orders  aux status = 'Activated' du compte sur lequel le composant LWC se situe
-    @AuraEnabled
-    public static Decimal getSumOrdersByAccount() {
-        AggregateResult groupedResults = [SELECT SUM(TotalAmount) total FROM Order];
-        return (Decimal)groupedResults.get('total');
+public with sharing class MyTeamOrdersController {
+    @AuraEnabled(cacheable=true)
+    public static Decimal getSumOrdersByAccount(Id accountId) {
+        // Agrégation côté SOQL (beaucoup plus rapide et scalable)
+        AggregateResult[] ar = [
+            SELECT SUM(NetAmount__c) total
+            FROM Commande__c
+            WHERE Compte__c = :accountId
+              AND Statut__c = 'Activated'   // << important pour la sélectivité et la cohérence métier
+        ];
+        if (!ar.isEmpty() && ar[0].get('total') != null) {
+            return (Decimal) ar[0].get('total');
+        }
+        return 0;
     }
-
 }

@@ -1,17 +1,10 @@
-global class UpdateAllAccounts implements Database.Batchable<sObject>{
-    
-    global Database.QueryLocator start(Database.BatchableContext info){ 
-        //Requeter seulement les comptes qui ont au moins une commande avec le Status 'Activated'
-        return Database.getQueryLocator('SELECT Id FROM Account');
- 
+public with sharing class UpdateAllAccounts {
+
+    /**
+     * Utilitaire pour recalculer via une List<Id> (appel depuis tests/LWC/etc.).
+     */
+    public static void updateAccounts(List<Id> accountIds) {
+        if (accountIds == null || accountIds.isEmpty()) return;
+        UpdateAccountCAHandler.recalcRevenueForAccounts(new Set<Id>(accountIds));
     }
-     
-    global void execute(Database.BatchableContext info, List<Account> scope){
-        Set<Id> setAccountIds = (new Map<Id,SObject>(scope)).keySet();
-        // Appeler une class qui va faire la logique du code;
-    }    
-     
-    global void finish(Database.BatchableContext info){     
-        
-    } 
- }
+}
