@@ -1,0 +1,50 @@
+name: Salesforce CI/CD (Auth URL)
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  pr-validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g @salesforce/cli
+      - name: Login via SFDX Auth URL (PR)
+        run: |
+          echo "${{ secrets.SF_AUTH_URL }}" > sfdx_auth.txt
+          sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --alias ci --set-default
+      - name: Run Apex tests (PR)
+        run: sf apex run test --target-org ci --result-format human --code-coverage --wait 30
+      - name: Validation only (no deploy)
+        run: sf project deploy start --source-dir force-app --target-org ci --test-level RunLocalTests --dry-run --wait 30
+
+  deploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g @salesforce/cli
+      - name: Login via SFDX Auth URL (push)
+        run: |
+          echo "${{ secrets.SF_AUTH_URL }}" > sfdx_auth.txt
+          sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --alias ci --set-default
+      - name: Run Apex tests (pre-deploy)
+        run: sf apex run test --target-org ci --result-format human --code-coverage --wait 30
+      - name: Deploy to Salesforce
+        run: |
+          sf project deploy start \
+            --source-dir force-app \
+            --target-org ci \
+            --ignore-conflicts \
+            --test-level RunLocalTests \
+            --wait 30
