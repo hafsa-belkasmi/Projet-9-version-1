@@ -2,11 +2,9 @@ name: Salesforce CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   validate-deploy:
@@ -14,23 +12,36 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Salesforce CLI
-        run: |
-          npm install --global sfdx-cli
+      # Installe proprement le CLI Salesforce
+      - name: Setup Salesforce CLI
+        uses: sfdx-actions/setup-sfdx@v2
 
+      # Authentification via le secret GitHub: SF_AUTH_URL
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SF_AUTH_URL }}" > auth.txt
-          # On ajoute -s pour que cette org soit la default, et alias ciOrg
-          sfdx auth:sfdxurl:store -f auth.txt -s -a ciOrg
+          sfdx auth:sfdxurl:store -f auth.txt --setdefaultusername --setalias ciOrg
           rm -f auth.txt
+          # Vérifie que l'org est bien connue (doit lister ciOrg)
+          sfdx force:org:list
 
-      - name: Run Apex tests
+      # Lance les tests Apex avec couverture
+      - name: Run Apex tests (JUnit + coverage)
         run: |
-          sfdx force:apex:test:run -c -r human -w 20 --codecoverage -u ciOrg
+          mkdir -p tests/apex
+          sfdx force:apex:test:run -c -r junit -d ./tests/apex --codecoverage -w 20 -u ciOrg
 
-      - name: Deploy to Salesforce (CheckOnly)
+      # (Option validation) Déploiement en check-only
+      - name: Deploy to Salesforce (checkonly)
         run: |
           sfdx force:source:deploy -p force-app/main/default --checkonly -u ciOrg
+
+      # Conserve les rapports JUnit en artefacts (preuve pour le PDF)
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-junit
+          path: tests/apex
