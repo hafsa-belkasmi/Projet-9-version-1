@@ -23,12 +23,14 @@ jobs:
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SF_AUTH_URL }}" > auth.txt
-          sfdx auth:sfdxurl:store -f auth.txt -a ciOrg
+          # On ajoute -s pour que cette org soit la default, et alias ciOrg
+          sfdx auth:sfdxurl:store -f auth.txt -s -a ciOrg
+          rm -f auth.txt
 
       - name: Run Apex tests
         run: |
-          sfdx force:apex:test:run -c -r human -w 10 --codecoverage
+          sfdx force:apex:test:run -c -r human -w 20 --codecoverage -u ciOrg
 
-      - name: Deploy to Salesforce
+      - name: Deploy to Salesforce (CheckOnly)
         run: |
-          sfdx force:source:deploy -p force-app/main/default --checkonly
+          sfdx force:source:deploy -p force-app/main/default --checkonly -u ciOrg
