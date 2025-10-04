@@ -1,33 +1,29 @@
-public with sharing class UpdateAccountCAHandler {
+public without sharing class UpdateAccountCAHandler {
 
-    /**
-     * Recalcule le CA (somme des NetAmount__c des Commande__c) pour les comptes donnés
-     * et l'écrit dans Account.AnnualRevenue.
-     */
+    // Nom appelé par les tests/classes
     public static void recalcRevenueForAccounts(Set<Id> accountIds) {
+        recalcAnnualRevenue(accountIds);
+    }
+
+    // Somme TOTALE (aucun filtre sur Statut__c)
+    public static void recalcAnnualRevenue(Set<Id> accountIds) {
         if (accountIds == null || accountIds.isEmpty()) return;
 
-        // 1) Agréger les NetAmount par compte
-        Map<Id, Decimal> revenueByAccount = new Map<Id, Decimal>();
+        Map<Id, Decimal> sumsByAccount = new Map<Id, Decimal>();
         for (AggregateResult ar : [
-            SELECT Compte__c accId, SUM(NetAmount__c) total
+            SELECT Compte__c acc, SUM(NetAmount__c) total
             FROM Commande__c
             WHERE Compte__c IN :accountIds
             GROUP BY Compte__c
         ]) {
-            revenueByAccount.put((Id) ar.get('accId'), (Decimal) ar.get('total'));
+            sumsByAccount.put((Id) ar.get('acc'), (Decimal) ar.get('total'));
         }
 
-        // 2) Appliquer la valeur (0 si aucune commande)
         List<Account> toUpdate = new List<Account>();
         for (Id accId : accountIds) {
-            Decimal total = revenueByAccount.get(accId);
-            toUpdate.add(new Account(
-                Id = accId,
-                AnnualRevenue = (total == null) ? 0 : total
-            ));
+            Decimal total = sumsByAccount.containsKey(accId) ? (Decimal) sumsByAccount.get(accId) : 0;
+            toUpdate.add(new Account(Id = accId, AnnualRevenue = total));
         }
-
         if (!toUpdate.isEmpty()) update toUpdate;
     }
 }
