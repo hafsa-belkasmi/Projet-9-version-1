@@ -1,15 +1,21 @@
-# List files or directories below to ignore them when running force:source:push, force:source:pull, and force:source:status
-# More information: https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_exclude_source.htm
-#
+# Fichiers ou dossiers à ignorer lors de force:source:push, pull, deploy, status
+# Plus d'infos : https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_exclude_source.htm
 
+# Package config
 package.xml
 
-# LWC configuration files
+# Fichiers de config LWC
 **/jsconfig.json
 **/.eslintrc.json
-
-# LWC Jest
-**/__tests__/**
 **/tsconfig.json
 
+# Tests LWC Jest
+**/__tests__/**
 **/*.ts
+
+# Fichiers non-Salesforce à ignorer
+README.md
+README.md-meta.xml
+auth-url.txt
+test-result.json
+tests/
