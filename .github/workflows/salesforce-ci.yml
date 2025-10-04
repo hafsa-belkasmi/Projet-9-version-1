@@ -14,13 +14,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Installe le CLI Salesforce
       - name: Install Salesforce CLI
         run: |
           npm install --global sfdx-cli
           sfdx --version
 
-      # ✅ Auth correcte (commande "force:auth:sfdxurl:store")
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SF_AUTH_URL }}" > auth.txt
@@ -28,18 +26,23 @@ jobs:
           rm -f auth.txt
           sfdx force:org:list
 
-      # Tests Apex + couverture (export JUnit)
       - name: Run Apex tests (JUnit + coverage)
         run: |
           mkdir -p tests/apex
           sfdx force:apex:test:run -c -r junit -d ./tests/apex --codecoverage -w 20 -u ciOrg
 
-      # Validation de déploiement (checkonly)
-      - name: Deploy to Salesforce (checkonly)
+      # ✅ Validation uniquement pour les Pull Requests
+      - name: Validate deployment (checkonly on PR)
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
           sfdx force:source:deploy -p force-app/main/default --checkonly -u ciOrg
 
-      # Artefacts de test pour ton PDF
+      # ✅ Déploiement réel uniquement sur push -> main
+      - name: Deploy to Salesforce (real deploy on push)
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          sfdx force:source:deploy -p force-app/main/default -u ciOrg
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
