@@ -31,18 +31,25 @@ jobs:
           mkdir -p tests/apex
           sfdx force:apex:test:run -c -r junit -d ./tests/apex --codecoverage -w 20 -u ciOrg
 
-      # ✅ Validation uniquement pour les Pull Requests
-      - name: Validate deployment (checkonly on PR)
+      # 🔎 Debug (optionnel mais très utile pour vérifier le contenu)
+      - name: List metadata (debug)
+        run: |
+          echo "== package.xml ==" && cat manifest/package.xml || true
+          echo "== default content ==" && ls -la force-app/main/default || true
+
+      # ✅ Validation (checkonly) via package.xml — uniquement sur Pull Requests
+      - name: Validate deploy (checkonly on PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: |
-          sfdx force:source:deploy -p force-app/main/default --checkonly -u ciOrg
+          sfdx force:source:deploy -x manifest/package.xml -l RunLocalTests --checkonly -u ciOrg
 
-      # ✅ Déploiement réel uniquement sur push -> main
-      - name: Deploy to Salesforce (real deploy on push)
+      # 🚀 Déploiement réel via package.xml — uniquement sur push vers main
+      - name: Real deploy on push to main
         if: ${{ github.event_name == 'push' }}
         run: |
-          sfdx force:source:deploy -p force-app/main/default -u ciOrg
+          sfdx force:source:deploy -x manifest/package.xml -l RunLocalTests -u ciOrg
 
+      # 📦 Artefacts de tests (toujours uploadés, même en cas d'échec)
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
