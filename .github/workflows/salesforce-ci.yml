@@ -14,21 +14,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Installe le CLI Salesforce (méthode fiable)
+      # Installe le CLI Salesforce
       - name: Install Salesforce CLI
         run: |
           npm install --global sfdx-cli
           sfdx --version
 
-      # Authentification avec ton secret SF_AUTH_URL
+      # ✅ Auth correcte (commande "force:auth:sfdxurl:store")
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SF_AUTH_URL }}" > auth.txt
-          sfdx auth:sfdxurl:store -f auth.txt --setdefaultusername --setalias ciOrg
+          sfdx force:auth:sfdxurl:store -f auth.txt --setdefaultusername --setalias ciOrg
           rm -f auth.txt
           sfdx force:org:list
 
-      # Tests Apex + couverture (rapports JUnit dans tests/apex)
+      # Tests Apex + couverture (export JUnit)
       - name: Run Apex tests (JUnit + coverage)
         run: |
           mkdir -p tests/apex
@@ -39,7 +39,7 @@ jobs:
         run: |
           sfdx force:source:deploy -p force-app/main/default --checkonly -u ciOrg
 
-      # Conserver les rapports de tests comme artefacts
+      # Artefacts de test pour ton PDF
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
