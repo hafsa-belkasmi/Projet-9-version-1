@@ -1,6 +1,27 @@
+<!--
+  ==============================================================
+  LWC Template : affichage du montant total des commandes
+  ==============================================================
+  Objectif :
+    - Afficher un message de confirmation visuel (bandeau vert)
+      indiquant le montant total des commandes calculé côté Apex.
+    - Utilise les classes SLDS pour une apparence cohérente
+      avec l’interface Salesforce Lightning.
+
+  Détails :
+    - slds-notify / slds-theme_success : composant d’alerte visuelle "succès"
+    - role="status" : améliore l’accessibilité (annonce vocale pour lecteurs d’écran)
+    - {sum} : variable publique (ou propriété réactive) définie dans le JS du composant
+  ==============================================================
+-->
+
 <template>
-    <div class="slds-notify slds-notify_alert slds-theme_success slds-m-bottom_small" role="status">
-      <h2>Montant total des commandes : {sum}</h2>
-    </div>
-  </template>
-  
+  <!-- Conteneur d’alerte de type "succès" (fond vert SLDS) -->
+  <div
+    class="slds-notify slds-notify_alert slds-theme_success slds-m-bottom_small"
+    role="status"
+  >
+    <!-- Message dynamique affichant la somme totale -->
+    <h2>Montant total des commandes : {sum}</h2>
+  </div>
+</template>

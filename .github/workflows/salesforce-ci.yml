@@ -1,3 +1,20 @@
+# ============================================================
+#  Salesforce CI - Validation et déploiement via GitHub Actions
+# ============================================================
+# 
+# Objectif :
+#   - Exécuter les tests Apex et valider/déployer automatiquement
+#     le code Salesforce selon le type d’événement GitHub.
+# 
+# Déclencheurs :
+#   - Sur chaque push vers "main" → déploiement réel
+#   - Sur chaque Pull Request vers "main" → validation (checkonly)
+# 
+# Prérequis :
+#   - Secret GitHub "SF_AUTH_URL" : contient l’URL SFDX d’authentification (format sfdxAuthUrl)
+#   - Salesforce CLI installé via npm
+# ============================================================
+
 name: Salesforce CI
 
 on:
@@ -11,14 +28,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # --------------------------------------------------------
+      # Étape 1 : Récupération du dépôt
+      # --------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --------------------------------------------------------
+      # Étape 2 : Installation du Salesforce CLI
+      # --------------------------------------------------------
       - name: Install Salesforce CLI
         run: |
           npm install --global sfdx-cli
           sfdx --version
 
+      # --------------------------------------------------------
+      # Étape 3 : Authentification à l’org Salesforce
+      # --------------------------------------------------------
+      # Le secret "SF_AUTH_URL" doit contenir une URL d’authentification SFDX valide
+      # (générée par `sfdx force:org:display --verbose` sur un environnement connecté).
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SF_AUTH_URL }}" > auth.txt
@@ -26,23 +54,38 @@ jobs:
           rm -f auth.txt
           sfdx force:org:list
 
+      # --------------------------------------------------------
+      # Étape 4 : Exécution des tests Apex avec génération de rapports JUnit
+      # --------------------------------------------------------
       - name: Run Apex tests (JUnit + coverage)
         run: |
           mkdir -p tests/apex
           sfdx force:apex:test:run -c -r junit -d ./tests/apex --codecoverage -w 20 -u ciOrg
 
-      # ✅ Validation uniquement pour les Pull Requests
+      # --------------------------------------------------------
+      # Étape 5 : Validation de déploiement (CheckOnly)
+      # --------------------------------------------------------
+      # Cette étape s’exécute uniquement pour les Pull Requests.
+      # Elle valide la compilation et les tests sans impacter l’org cible.
       - name: Validate deployment (checkonly on PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           sfdx force:source:deploy -p force-app/main/default --checkonly -u ciOrg
 
-      # ✅ Déploiement réel uniquement sur push -> main
+      # --------------------------------------------------------
+      # Étape 6 : Déploiement réel
+      # --------------------------------------------------------
+      # Cette étape ne s’exécute que lors d’un push sur la branche principale.
+      # Elle effectue un vrai déploiement sur l’organisation Salesforce.
       - name: Deploy to Salesforce (real deploy on push)
         if: ${{ github.event_name == 'push' }}
         run: |
           sfdx force:source:deploy -p force-app/main/default -u ciOrg
 
+      # --------------------------------------------------------
+      # Étape 7 : Sauvegarde des rapports de tests
+      # --------------------------------------------------------
+      # Permet de consulter les résultats des tests Apex dans GitHub (artifacts).
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
