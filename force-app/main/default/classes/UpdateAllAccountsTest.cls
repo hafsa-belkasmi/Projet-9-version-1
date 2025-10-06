@@ -1,51 +1,72 @@
 /**
- * Classe de test unitaire pour UpdateAllAccounts.
+ * Classe de test unitaire : UpdateAllAccountsTest
+ * ------------------------------------------------------------
+ * Cette classe vérifie le bon fonctionnement du batch Apex
+ * `UpdateAllAccounts`, qui met à jour le chiffre d’affaires
+ * (AnnualRevenue) de chaque compte à partir de la somme des montants
+ * des commandes (Commande__c) associées.
  *
- * Objectif :
- *   Vérifier que la méthode updateAccounts() déclenche bien le recalcul
- *   du chiffre d’affaires (AnnualRevenue) sur les comptes transmis,
- *   en s’appuyant sur la logique du handler UpdateAccountCAHandler.
+ *  Objectif :
+ *    - S’assurer que le batch traite correctement les enregistrements.
+ *    - Valider que le champ AnnualRevenue est mis à jour
+ *      conformément à la logique métier implémentée dans
+ *      la classe UpdateAccountCAHandler.
  *
- * Points de contrôle :
- *   - Vérifier que le champ AnnualRevenue est mis à jour avec la somme correcte.
- *   - S’assurer que la méthode supporte les appels en masse (List<Id>).
+ * Bonnes pratiques respectées :
+ *    - Utilisation de Test.startTest() / Test.stopTest() pour isoler l’exécution.
+ *    - Création de données de test locales (aucune dépendance à l’environnement).
+ *    - Assertion explicite pour valider le résultat attendu.
+ *
+ * Auteur  : Hafsa Belkasmi  
+ * Date    : Octobre 2025  
+ * Version : 1.0
  */
 @IsTest
 private class UpdateAllAccountsTest {
 
     /**
-     * Test principal : valide que le recalcul en masse met à jour correctement
-     * le champ AnnualRevenue du compte à partir des commandes associées.
+     * Méthode de test principale : testBatchExecution
+     * ------------------------------------------------------------
+     * Objectif :
+     *   - Tester l’exécution complète du batch UpdateAllAccounts.
+     *   - Vérifier que la méthode met bien à jour le champ AnnualRevenue
+     *     du compte concerné à partir des commandes associées.
+     *
+     * Étapes du test :
+     *  Création d’un compte de test.
+     *  Insertion d’une commande associée à ce compte.
+     *  Exécution du batch avec Database.executeBatch().
+     *   Vérification que le champ AnnualRevenue a bien été mis à jour.
      */
     @IsTest
-    static void bulk_update_sets_revenue() {
-        // --- Préparation des données ---
-        // Création d’un compte de test
-        Account acc = new Account(Name = 'Test Account 1');
+    static void testBatchExecution() {
+        // --- 1️ Préparation des données de test ---
+        // Création d’un compte fictif
+        Account acc = new Account(Name = 'Batch Test');
         insert acc;
 
-        // Insertion de commandes associées à ce compte
-        // Total attendu : 80 + 40 = 120
-        insert new List<Commande__c>{
-            new Commande__c(Compte__c = acc.Id, NetAmount__c = 80, Statut__c = 'Activated'),
-            new Commande__c(Compte__c = acc.Id, NetAmount__c = 40, Statut__c = 'Activated')
-        };
+        // Insertion d’une commande associée à ce compte
+        insert new Commande__c(
+            Compte__c = acc.Id,
+            NetAmount__c = 500,
+            Statut__c = 'Activated'
+        );
 
-        // --- Exécution du traitement ---
-        // On passe une liste contenant l’Id du compte à la méthode à tester.
+        // --- Exécution du batch ---
+        // On lance le batch en isolant son exécution dans un contexte de test
         Test.startTest();
-        UpdateAllAccounts.updateAccounts(new List<Id>{ acc.Id });
+        Database.executeBatch(new UpdateAllAccounts(), 200);
         Test.stopTest();
 
-        // --- Vérification du résultat ---
-        // Relecture du compte pour s’assurer que le champ AnnualRevenue a été mis à jour
+        // ---Vérification du résultat ---
+        // On relit le compte pour s’assurer que le champ AnnualRevenue a été mis à jour
         Account refreshed = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
 
-        // Vérifie que le montant correspond bien à la somme des commandes
+        // Assertion pour garantir que la valeur a bien été recalculée à 500
         System.assertEquals(
-            120,
-            (Decimal)refreshed.AnnualRevenue,
-            'AnnualRevenue doit égaler la somme des NetAmount__c (80 + 40 = 120).'
+            500,
+            refreshed.AnnualRevenue,
+            'Le champ AnnualRevenue doit être mis à jour correctement par le batch.'
         );
     }
 }
