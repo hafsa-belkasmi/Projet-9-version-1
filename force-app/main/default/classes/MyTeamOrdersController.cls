@@ -1,12 +1,11 @@
 /**
- * Classe Apex exposée aux composants Lightning (Aura / LWC) 
- * permettant de récupérer les montants totaux des commandes associées à un compte.
- * 
+ * Classe Apex exposée aux composants Lightning (Aura / LWC).
+ * Objectif : récupérer les montants totaux des commandes associées à un compte.
+ *
  * Note :
- *  - "without sharing" : la classe exécute le code sans appliquer les règles de partage,
- *    ce qui peut être intentionnel pour permettre une vision complète des données.
- *  - Méthodes @AuraEnabled(cacheable=true) : optimisées pour la consultation depuis le client
- *    avec mise en cache côté navigateur.
+ *  - Le champ NetAmount__c est calculé par le trigger selon la formule :
+ *      NetAmount__c = TotalAmount__c - ShipmentCost__c
+ *  - Ici, on ne refait pas le calcul : on agrège simplement NetAmount__c.
  */
 public without sharing class MyTeamOrdersController {
 
@@ -20,19 +19,18 @@ public without sharing class MyTeamOrdersController {
      */
     @AuraEnabled(cacheable=true)
     public static Decimal getSumOrdersByAccount(Id accountId) {
-        // Vérification défensive : si aucun Id fourni, renvoie 0
         if (accountId == null) return 0;
-        
-        // Requête d’agrégation pour sommer tous les NetAmount__c liés au compte
+
+        // Agrégation des NetAmount__c liés au compte
         AggregateResult[] ar = [
             SELECT SUM(NetAmount__c) total
             FROM Commande__c
             WHERE Compte__c = :accountId
         ];
-        
-        // Si un résultat est trouvé et non nul, on retourne la somme ; sinon 0
-        return (ar.size() > 0 && ar[0].get('total') != null) 
-            ? (Decimal) ar[0].get('total') 
+
+        // Retourne la somme si disponible, sinon 0
+        return (ar.size() > 0 && ar[0].get('total') != null)
+            ? (Decimal) ar[0].get('total')
             : 0;
     }
 
@@ -45,20 +43,19 @@ public without sharing class MyTeamOrdersController {
      */
     @AuraEnabled(cacheable=true)
     public static Decimal getSumActivatedOrdersByAccount(Id accountId) {
-        // Vérification défensive : si aucun Id fourni, renvoie 0
         if (accountId == null) return 0;
-        
-        // Requête d’agrégation filtrée uniquement sur les commandes activées
+
+        // Agrégation filtrée uniquement sur les commandes activées
         AggregateResult[] ar = [
             SELECT SUM(NetAmount__c) total
             FROM Commande__c
             WHERE Compte__c = :accountId
               AND Statut__c = 'Activated'
         ];
-        
-        // Renvoie la somme si disponible, sinon 0
-        return (ar.size() > 0 && ar[0].get('total') != null) 
-            ? (Decimal) ar[0].get('total') 
+
+        // Retourne la somme si disponible, sinon 0
+        return (ar.size() > 0 && ar[0].get('total') != null)
+            ? (Decimal) ar[0].get('total')
             : 0;
     }
 }
